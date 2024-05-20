@@ -1,0 +1,48 @@
+name: Build rabbimtq docker image
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - v3.**
+    paths-ignore:
+      - ".github/workflows/**"
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  build-and-push-image:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - uses: actions/checkout@v4
+      - name: Log in to the Container registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: "${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}"
+          tags: |
+            type=raw,value=latest
+            type=pep440,pattern={{version}}
+          labels: |
+            maintainer=Cubalink Maintainer
+            org.opencontainers.image.title=RabbitMQ with Management and WebSTOMP plugins
+      - name: Build and push
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
